@@ -19,8 +19,8 @@ CREATE_USAGE = """
 🇧  You show 2 fingers
 🇨  You show 3 fingers"""
 
-# Setup logger
-log = logging.getLogger(__name__)
+# Use discord logger
+log = logging.getLogger("discord")
 log.setLevel(logging.INFO)
 
 # Load environment variables
@@ -33,7 +33,7 @@ con = sql.connect('database.db')
 # Create bot client
 intents = discord.Intents.default()
 intents.message_content = True
-bot = Bot(command_prefix='**', intents=intents)
+bot = Bot(command_prefix="**", intents=intents)
 
 
 @bot.command(name="create")
@@ -75,4 +75,4 @@ async def create_quiz(ctx: Context, *, quiz: Quiz, user: discord.User, channel: 
 async def on_ready():
     log.info('QuizManager ready')
 
-bot.run(TOKEN)
+bot.run(TOKEN, )

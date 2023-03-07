@@ -11,4 +11,4 @@ class Quiz(commands.Converter):
         self.emojis = [line[0] for line in lines[3:]]
         print(self.solution)
         if self.solution not in self.emojis:
-            raise commands.BadArgument("Solution is not a possible answer!")
+            raise commands.BadArgument("Solution is not a possible answer")
