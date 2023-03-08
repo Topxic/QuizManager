@@ -1,34 +1,20 @@
-import os
 import time
 import discord
 import logging
-
-import sqlite3 as sql
+import logging.config
 
 from discord.ext.commands import *
-from dotenv import load_dotenv
+from config import DISCORD_TOKEN, LOGGING_CONFIG
+from database import create_game, create_tables
 
-from quiz import *
 from util import *
 
-CREATE_USAGE = """
-**create How many finger am I showing?
-30 1 0 0 0
-🇧 
-🇦  You show 1 finger
-🇧  You show 2 fingers
-🇨  You show 3 fingers"""
+# Setup logger
+logging.config.dictConfig(LOGGING_CONFIG)
+log = logging.getLogger(__name__)
 
-# Use discord logger
-log = logging.getLogger("discord")
-log.setLevel(logging.INFO)
-
-# Load environment variables
-load_dotenv('./secrets.env')
-TOKEN = os.getenv('DISCORD_TOKEN')
-
-# Set up database
-con = sql.connect('database.db')
+# Setup database
+create_tables()
 
 # Create bot client
 intents = discord.Intents.default()
@@ -37,42 +23,46 @@ bot = Bot(command_prefix="**", intents=intents)
 
 
 @bot.command(name="create")
-async def create_quiz(ctx: Context, *, quiz: Quiz, user: discord.User, channel: discord.TextChannel):
+async def create_quiz(ctx: Context, *, quiz_request: QuizRequest):    
+    # Persist quiz entity
+    await create_game(quiz_request)
+
     # Build poll embed
     embed = discord.Embed(
         title='Quiz',
-        description='Quiz valid for: ' + cron_to_string(quiz.cron),
+        description='Quiz valid for: ' + seconds_to_string(quiz_request.ttl),
         color=discord.Color.orange()
     )
-    embed.add_field(name='Question', value=quiz.question, inline=False)
-    embed.add_field(name='Answers', value=quiz.answers, inline=False)
+    embed.add_field(name='Question', value=quiz_request.question, inline=False)
+    embed.add_field(name='Answers', value=quiz_request.answers, inline=False)
 
     poll = await ctx.send(embed=embed)
 
     # Add emoji reactions for voting
-    for emoji in quiz.emojis:
+    for emoji in quiz_request.emojis:
         await poll.add_reaction(emoji)
 
-    # Wait poll time
-    while quiz.ttl > 0:
-        time.sleep(min(5, quiz.ttl))
-        quiz.ttl -= 5
-        if quiz.ttl > 0:
-            embed.description = 'Poll valid for: ' + \
-                seconds_to_string(quiz.ttl)
-        else:
-            embed.description = 'Poll finished. Correct answer: '
-        await poll.edit(embed=embed)
 
-    # Mark poll as finished and collect result
-    for emoji in quiz.emojis:
-        updated_poll = await ctx.fetch_message(poll.id)
-        reactions = discord.utils.get(updated_poll.reactions, emoji=emoji)
-        print(emoji, reactions.count)
+    # Wait poll time
+#    while quiz.ttl > 0:
+#        time.sleep(min(5, quiz.ttl))
+#        quiz.ttl -= 5
+#        if quiz.ttl > 0:
+#            embed.description = 'Poll valid for: ' + \
+#                seconds_to_string(quiz.ttl)
+#        else:
+#            embed.description = 'Poll finished. Correct answer: '
+#        await poll.edit(embed=embed)
+#
+#    # Mark poll as finished and collect result
+#    for emoji in quiz.emojis:
+#        updated_poll = await ctx.fetch_message(poll.id)
+#        reactions = discord.utils.get(updated_poll.reactions, emoji=emoji)
+#        print(emoji, reactions.count)
 
 
 @bot.event
 async def on_ready():
     log.info('QuizManager ready')
 
-bot.run(TOKEN, )
+bot.run(DISCORD_TOKEN, log_handler=None)  # Use root logger

@@ -1,8 +1,24 @@
+from discord.ext import commands
 
 WEEKS = 7 * 24 * 60 * 60
 DAYS = 24 * 60 * 60
 HOURS = 60 * 60
 MINUTES = 60
+
+class QuizRequest(commands.Converter):
+    async def convert(self, ctx: commands.Context, arg: str):
+        lines = arg.split('\n')
+        self.question = lines[0]
+        self.ttl = cron_to_seconds([int(x) for x in lines[1].split(' ')])
+        self.solutions = lines[2].split()
+        self.answers = lines[3:]
+        self.emojis = [line[0] for line in lines[3:]]
+        if not set(self.solutions).issubset(set(self.emojis)):
+            raise commands.BadArgument("At least one solution is not a possible answer")
+        self.creator_id = ctx.author.id
+        self.channel_id = ctx.channel.id
+        self.message_id = ctx.message.id
+        return self
 
 
 def cron_to_seconds(cron: list[int]) -> int:
