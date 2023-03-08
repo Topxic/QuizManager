@@ -1,11 +1,12 @@
 import time
+import threading
 import discord
 import logging
 import logging.config
 
 from discord.ext.commands import *
-from config import DISCORD_TOKEN, LOGGING_CONFIG
-from database import create_game, create_tables
+from config import DISCORD_TOKEN, LOGGING_CONFIG, UPDATE_INTERVAL
+from database import create_game, create_tables, update_ttl
 
 from util import *
 
@@ -20,6 +21,12 @@ create_tables()
 intents = discord.Intents.default()
 intents.message_content = True
 bot = Bot(command_prefix="**", intents=intents)
+
+
+def update():
+    while True:
+        terminated_quizzes = update_ttl()
+        time.sleep(UPDATE_INTERVAL)
 
 
 @bot.command(name="create")
@@ -64,5 +71,9 @@ async def create_quiz(ctx: Context, *, quiz_request: QuizRequest):
 @bot.event
 async def on_ready():
     log.info('QuizManager ready')
+
+# Start update thread
+thread = threading.Thread(target=update)
+thread.start()
 
 bot.run(DISCORD_TOKEN, log_handler=None)  # Use root logger

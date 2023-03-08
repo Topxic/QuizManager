@@ -5,6 +5,8 @@ dotenv.load_dotenv('./secrets.env')
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 
+UPDATE_INTERVAL = 5
+
 DB_CONFIG = {
     'user': os.getenv('MYSQL_USER'),
     'password': os.getenv('MYSQL_SECRET'),
@@ -34,7 +36,7 @@ LOGGING_CONFIG = {
     'loggers': { 
         '': {  # root logger
             'handlers': ['default'],
-            'level': 'INFO',
+            'level': 'DEBUG',
             'propagate': False
         }
     } 
