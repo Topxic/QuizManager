@@ -25,10 +25,6 @@ bot = Bot(command_prefix="**", intents=intents)
 
 @bot.event
 async def on_raw_reaction_add(payload):
-    # Ignore bot reactions
-    if bot.user.id == payload.user_id:
-        return
-
     channel = bot.get_channel(payload.channel_id)
     message: discord.Message = await channel.fetch_message(payload.message_id)
     for reaction in message.reactions:
@@ -36,6 +32,9 @@ async def on_raw_reaction_add(payload):
         if payload.emoji.name == reaction.emoji:
             continue
         async for user in reaction.users():
+            # Ignore bot reactions
+            if user.bot:
+                continue
             if user.id == payload.user_id:
                 await message.remove_reaction(reaction, discord.Object(user.id))
 
@@ -51,42 +50,68 @@ async def update_loop():
         channel = bot.get_channel(channel_id)
         message: discord.Message = await channel.fetch_message(message_id)
         embed: discord.Embed = message.embeds[0]
-        embed.description = 'Quiz valid for: ' + seconds_to_string(time_to_live)
+        embed.description = 'Quiz valid for: ' + \
+            seconds_to_string(time_to_live)
         await message.edit(embed=embed)
-    
+
     for quiz_row in terminated:
-        quiz_id = uuid.UUID(bytes=bytes(quiz_row[0]))
+        quiz_id = quiz_row[0]
         message_id = quiz_row[1]
         channel_id = quiz_row[2]
 
-        answers = get_correct_answers(quiz_id)
-        answers = [x[0] for x in answers]
-
+        # Fetch quiz embed
         channel = bot.get_channel(channel_id)
         message: discord.Message = await channel.fetch_message(message_id)
         embed: discord.Embed = message.embeds[0]
-        embed.description = "Quiz ended correct answers:\n" + '\n'.join(answers)
+
+        answer_entities = get_answers(quiz_id)
+        # Create emoji-answer_id lookup
+        answer_lookup = {}
+        for answer_entity in answer_entities:
+            answer_id = answer_entity[0]
+            emoji = answer_entity[1]
+            answer_str = answer_entity[2]
+            correct = answer_entity[3]
+            answer_lookup[emoji] = (answer_id, answer_str, correct)
+
+        # Process user reactions
+        given_answers = []
+        for reaction in message.reactions:
+            async for user in reaction.users():
+                # Skip bots
+                if user.bot:
+                    continue
+
+                answer = answer_lookup[reaction.emoji]
+                given_answers.append((quiz_id, answer[0], user.id))
+
+        persist_given_answers(given_answers)
+
+        embed.description = "Quiz ended correct answers:\n" + '\n'.join(
+            [answer[1] for answer in answer_lookup.values() if answer[2]])
         await message.edit(embed=embed)
 
 
 @bot.command(name="create")
-async def create_quiz(ctx: Context, *, quiz_request: QuizRequest):
+async def create_quiz(ctx: Context, *, request: QuizRequest):
     # Build quiz embed
     embed = discord.Embed(
-        title=quiz_request.question,
-        description='Quiz valid for: ' + seconds_to_string(quiz_request.ttl),
+        title=request.question,
+        description='Quiz valid for: ' + seconds_to_string(request.ttl),
         color=discord.Color.orange()
     )
     embed.add_field(name='Answers', value='\n'.join(
-        quiz_request.answers), inline=False)
+        [emoji + ' ' + text for emoji, text in zip(
+            request.emojis, request.answers)]
+    ), inline=False)
     quiz = await ctx.send(embed=embed)
 
     # Persist quiz entity
-    quiz_request.message_id = quiz.id
-    create_game(quiz_request)
+    request.message_id = quiz.id
+    create_game(request)
 
     # Add emoji reactions for voting
-    for emoji in quiz_request.emojis:
+    for emoji in request.emojis:
         await quiz.add_reaction(emoji)
 
 

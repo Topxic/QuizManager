@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS quiz (
-    quiz_id BINARY(16) PRIMARY KEY,
+    quiz_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     message_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
     creator_id BIGINT NOT NULL,
@@ -23,10 +23,12 @@ ON quiz (time_to_live, finished);
 
 
 CREATE TABLE IF NOT EXISTS answer (
-    answer_id BINARY(16) PRIMARY KEY,
-    quiz_id BINARY(16) NOT NULL,
+    answer_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    quiz_id INT UNSIGNED NOT NULL,
+    emoji CHAR NOT NULL,
     answer TEXT NOT NULL,
     correct BOOLEAN NOT NULL,
+    UNIQUE KEY (quiz_id, emoji, answer)
     FOREIGN KEY(quiz_id) REFERENCES quiz(quiz_id) ON DELETE CASCADE
 );
 
@@ -34,8 +36,8 @@ CREATE INDEX quiz_id
 ON answer (quiz_id);
 
 CREATE TABLE IF NOT EXISTS given_answer (
-    quiz_id BINARY(16) NOT NULL,
-    answer_id BINARY(16) NOT NULL,
+    quiz_id INT UNSIGNED NOT NULL,
+    answer_id INT UNSIGNED NOT NULL,
     player_id BIGINT NOT NULL,
     PRIMARY KEY (quiz_id, answer_id, player_id),
     FOREIGN KEY(quiz_id) REFERENCES quiz(quiz_id) ON DELETE CASCADE,

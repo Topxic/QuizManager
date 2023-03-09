@@ -1,5 +1,4 @@
 import logging
-import uuid
 import mysql.connector
 from util import *
 
@@ -12,13 +11,38 @@ GIVEN_ANSWER_TABLE = 'given_answer'
 log = logging.getLogger(__name__)
 
 
-def get_correct_answers(quiz_id):
+def persist_given_answers(given_answers):
     try:
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor()
-        query = ("SELECT answer "
+
+        for given_answer in given_answers:
+            query = ("INSERT INTO {} (quiz_id, answer_id, player_id) "
+                     "VALUES (%s, %s, %s)").format(GIVEN_ANSWER_TABLE)
+            cursor.execute(query, (
+                given_answer[0],
+                given_answer[1],
+                given_answer[2]
+            ))
+            given_answer_id = cursor.lastrowid
+            log.debug("Persisted new given answer: %s", given_answer_id)
+
+        connection.commit()
+    except Exception as e:
+        log.error('Error persisting given answer entity: %s', e)
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
+def get_answers(quiz_id):
+    try:
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor()
+        query = ("SELECT answer_id, emoji, answer, correct "
                  "FROM {} "
-                 "WHERE quiz_id = UNHEX('{}') AND correct = 1").format(ANSWER_TABLE, quiz_id.hex)
+                 "WHERE quiz_id = {}").format(ANSWER_TABLE, quiz_id)
         cursor.execute(query)
         answers = cursor.fetchall()
         return answers
@@ -89,11 +113,9 @@ def create_game(quiz_request: QuizRequest):
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor()
 
-        quiz_id = uuid.uuid4()
-        query = ("INSERT INTO {} (quiz_id, message_id, channel_id, creator_id, question, time_to_live, finished) "
-                 "VALUES (UNHEX(%s), %s, %s, %s, %s, %s, %s)").format(QUIZ_TABLE)
+        query = ("INSERT INTO {} (message_id, channel_id, creator_id, question, time_to_live, finished) "
+                 "VALUES (%s, %s, %s, %s, %s, %s)").format(QUIZ_TABLE)
         cursor.execute(query, (
-            quiz_id.hex,
             quiz_request.message_id,
             quiz_request.channel_id,
             quiz_request.creator_id,
@@ -101,19 +123,19 @@ def create_game(quiz_request: QuizRequest):
             quiz_request.ttl,
             quiz_request.ttl > 0
         ))
-        log.debug("Persisted new quiz: %s", quiz_id.hex)
+        quiz_id = cursor.lastrowid
+        log.debug("Persisted new quiz: %s", quiz_id)
 
         for i in range(len(quiz_request.emojis)):
-            answer_id = uuid.uuid4()
-            query = ("INSERT INTO {} (answer_id, quiz_id, answer, correct) "
-                 "VALUES (UNHEX(%s), UNHEX(%s), %s, %s)").format(ANSWER_TABLE)
+            query = ("INSERT INTO {} (quiz_id, emoji, answer, correct) "
+                 "VALUES (%s, %s, %s, %s)").format(ANSWER_TABLE)
             cursor.execute(query, (
-                answer_id.hex,
-                quiz_id.hex,
+                quiz_id,
+                quiz_request.emojis[i],
                 quiz_request.answers[i],
                 quiz_request.emojis[i] in quiz_request.solutions
             ))
-            log.debug("Persisted new answer: %s", answer_id.hex)
+            log.debug("Persisted new answer: %s", cursor.lastrowid)
 
         connection.commit()
     except Exception as e:

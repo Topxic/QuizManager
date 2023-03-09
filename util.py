@@ -12,7 +12,7 @@ class QuizRequest(commands.Converter):
         self.question = lines[0]
         self.ttl = cron_to_seconds([int(x) for x in lines[1].split(' ')])
         self.solutions = lines[2].split()
-        self.answers = lines[3:]
+        self.answers = [line.split(' ', 1)[1] for line in lines[3:]]
         self.emojis = [line[0] for line in lines[3:]]
         if not set(self.solutions).issubset(set(self.emojis)):
             raise commands.BadArgument(
