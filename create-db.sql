@@ -36,18 +36,18 @@ ON quiz (time_to_live, finished);
 CREATE INDEX quiz_id
 ON answer (quiz_id);
 
--- These indices are/could be used for statistics
-CREATE INDEX player_id_quiz_id
-ON given_answer (player_id, quiz_id);
-
-CREATE INDEX channel_id_quiz_id
-ON quiz (channel_id, quiz_id);
-
+-- Used for grouping by player_id
 CREATE INDEX player_id
 ON given_answer (player_id);
 
-CREATE INDEX creator_id
-ON quiz (creator_id);
+-- Improve performance of correct answer lookup
+CREATE INDEX correct
+ON answer (correct);
 
-CREATE INDEX finished
-ON quiz (finished)
+-- Speedup join with quiz table
+CREATE INDEX given_answer_quiz_id
+ON given_answer (quiz_id);
+
+-- Used to count number of quizzes per channel
+CREATE INDEX channel_id
+ON quiz (channel_id);

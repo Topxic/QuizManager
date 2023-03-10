@@ -20,7 +20,10 @@ create_tables()
 intents = discord.Intents.default()
 intents.message_content = True
 intents.reactions = True
-bot = Bot(command_prefix=COMMAND_PREFIX, intents=intents)
+
+help_command = commands.DefaultHelpCommand()
+bot = Bot(description=BOT_DESCRIPTION, help_command=help_command,
+          command_prefix=COMMAND_PREFIX, intents=intents)
 
 
 @bot.event
@@ -94,6 +97,9 @@ async def update_loop():
 
 @bot.command(name="create")
 async def create_quiz(ctx: Context, *, request: QuizRequest):
+    # Delete command message
+    await ctx.message.delete(delay=0)
+
     # Build quiz embed
     embed = discord.Embed(
         title=request.question,
@@ -104,6 +110,8 @@ async def create_quiz(ctx: Context, *, request: QuizRequest):
         [emoji + ' ' + text for emoji, text in zip(
             request.emojis, request.answers)]
     ), inline=False)
+    embed.set_footer(text='Quiz created in channel ' +
+                     ctx.channel.name, icon_url=bot.user.display_avatar.url)
     quiz = await ctx.send(embed=embed)
 
     # Persist quiz entity
@@ -114,46 +122,53 @@ async def create_quiz(ctx: Context, *, request: QuizRequest):
     for emoji in request.emojis:
         await quiz.add_reaction(emoji)
 
-    # Delete command message
-    await ctx.message.delete(delay=5)
 
-
-@bot.command(name="score")
-async def score(ctx: Context):
+@bot.command(name="player_stats")
+async def player_stats(ctx: Context):
     user_id = ctx.author.id
     channel_id = ctx.channel.id
-    score = get_score(user_id, channel_id)
+    num_correct_answers, num_false_answers, num_created = get_player_stats(
+        user_id, channel_id)
 
     embed = discord.Embed(
         title="Stats for player " + ctx.author.name,
         color=discord.Color.orange()
     )
-    embed.add_field(name='Score', value=score, inline=False)
+    embed.set_thumbnail(url=ctx.author.avatar.url)
+    embed.set_footer(text='Statistics made for channel ' +
+                     ctx.channel.name, icon_url=bot.user.display_avatar.url)
+    embed.add_field(name='Player created ' + str(num_created) + ' quiz questions', value='', inline=False)
+    embed.add_field(name='Player made ' + str(num_correct_answers) + '/' + str(num_correct_answers + num_false_answers) + ' correct answers', value='')
 
-    stats = await ctx.send(embed=embed)
+    await ctx.send(embed=embed)
 
     # Delete command message
     await ctx.message.delete(delay=5)
 
 
-@bot.command(name="leaderboard")
-async def leaderboard(ctx: Context):
+@bot.command(name="channel_stats")
+async def channel_stats(ctx: Context):
     channel_id = ctx.channel.id
-    scores = get_scores(channel_id)
+    num_running_quizzes, num_total_quizzes, leaderboard = get_channel_stats(
+        channel_id)
 
     embed = discord.Embed(
         title="Cannel leaderboard",
         color=discord.Color.orange()
     )
-    for score in scores:
+    embed.add_field(name=str(num_running_quizzes) + '/' +
+                    str(num_total_quizzes) + ' quizzes are open', value='', inline=False)
+    for score in leaderboard:
         player: discord.User = await bot.fetch_user(score[0])
-        embed.add_field(name='Score for player ' + player.name, value=score[1], inline=False)
-
-    stats = await ctx.send(embed=embed)
+        embed.add_field(name='Score of player ' +
+                        player.name + ': ' + str(score[1]), value='', inline=False)
+    embed.set_footer(text='Statistics made for channel ' +
+                     ctx.channel.name, icon_url=bot.user.display_avatar.url)
+    await ctx.send(embed=embed)
 
     # Delete command message
     await ctx.message.delete(delay=5)
-            
+
 
 @bot.event
 async def on_ready():
@@ -161,4 +176,4 @@ async def on_ready():
     update_loop.start()
 
 
-bot.run(DISCORD_TOKEN, log_handler=None)  # Use root logger
+bot.run(BOT_TOKEN, log_handler=None)  # Use root logger

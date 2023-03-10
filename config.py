@@ -4,8 +4,9 @@ import dotenv
 dotenv.load_dotenv('./secrets.env')
 
 COMMAND_PREFIX = '?'
-
-DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+BOT_DESCRIPTION = "Quiz moderation: This bot creates and moderates quiz questions with a lifetime set by the user. Furhtermore, it provides commands for player statistics. Use " + \
+    COMMAND_PREFIX + "help to get the list of possible commands"
+BOT_TOKEN = os.getenv('DISCORD_TOKEN')
 
 UPDATE_INTERVAL = 5
 
@@ -19,29 +20,29 @@ DB_CONFIG = {
     'pool_size': 5
 }
 
-LOGGING_CONFIG = { 
+LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': False,
-    'formatters': { 
-        'standard': { 
+    'formatters': {
+        'standard': {
             'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
         },
     },
-    'handlers': { 
-        'default': { 
+    'handlers': {
+        'default': {
             'level': 'INFO',
             'formatter': 'standard',
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stdout',  # Default is stderr
         },
     },
-    'loggers': { 
+    'loggers': {
         '': {  # root logger
             'handlers': ['default'],
             'level': 'DEBUG',
             'propagate': False
         }
-    } 
+    }
 }
 
 CREATE_USAGE = COMMAND_PREFIX + """

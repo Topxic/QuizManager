@@ -11,7 +11,7 @@ GIVEN_ANSWER_TABLE = 'given_answer'
 log = logging.getLogger(__name__)
 
 
-def get_score(player_id, channel_id):
+def get_player_stats(player_id, channel_id):
     try:
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor()
@@ -26,7 +26,32 @@ def get_score(player_id, channel_id):
             player_id, channel_id
         )
         cursor.execute(query)
-        return cursor.fetchone()[0]
+        num_correct_answers = cursor.fetchone()[0]
+
+        query = ("SELECT COUNT(*) "
+                 "FROM {} AS ga "
+                 "JOIN {} AS a ON ga.answer_id = a.answer_id "
+                 "JOIN {} AS q ON ga.quiz_id = q.quiz_id "
+                 "WHERE ga.player_id = {} "
+                 "AND q.channel_id = {} "
+                 "AND a.correct = false").format(
+            GIVEN_ANSWER_TABLE, ANSWER_TABLE, QUIZ_TABLE,
+            player_id, channel_id
+        )
+        cursor.execute(query)
+        num_false_answers = cursor.fetchone()[0]
+
+        query = ("SELECT COUNT(*) "
+                 "FROM {} "
+                 "WHERE creator_id = {} "
+                 "AND channel_id = {}").format(
+            QUIZ_TABLE,
+            player_id, channel_id
+        )
+        cursor.execute(query)
+        num_created = cursor.fetchone()[0]
+
+        return (num_correct_answers, num_false_answers, num_created)
     except Exception as e:
         log.error('Error reading score for player: %s in channel: %s, %s',
                   player_id, channel_id, e)
@@ -36,10 +61,27 @@ def get_score(player_id, channel_id):
             connection.close()
 
 
-def get_scores(channel_id):
+def get_channel_stats(channel_id):
     try:
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor()
+
+        query = ("SELECT COUNT(*) "
+                 "FROM {} "
+                 "WHERE channel_id = {} AND time_to_live > 0").format(
+            QUIZ_TABLE, channel_id
+        )
+        cursor.execute(query)
+        num_running_quizzes = cursor.fetchone()[0]
+
+        query = ("SELECT COUNT(*) "
+                 "FROM {} "
+                 "WHERE channel_id = {}").format(
+            QUIZ_TABLE, channel_id
+        )
+        cursor.execute(query)
+        num_total_quizzes = cursor.fetchone()[0]
+
         query = ("SELECT player_id, COUNT(*) AS score "
                  "FROM {} AS ga "
                  "JOIN {} AS a ON ga.answer_id = a.answer_id "
@@ -52,7 +94,9 @@ def get_scores(channel_id):
                     channel_id
         )
         cursor.execute(query)
-        return cursor.fetchall()
+        leaderboard = cursor.fetchall()
+
+        return (num_running_quizzes, num_total_quizzes, leaderboard)
     except Exception as e:
         log.error('Error reading scores for channel: %s, %s', channel_id, e)
     finally:
