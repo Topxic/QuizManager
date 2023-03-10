@@ -4,7 +4,7 @@ import logging.config
 
 from discord.ext import tasks
 from discord.ext.commands import *
-from config import DISCORD_TOKEN, LOGGING_CONFIG, UPDATE_INTERVAL
+from config import *
 from database import *
 
 from util import *
@@ -20,7 +20,7 @@ create_tables()
 intents = discord.Intents.default()
 intents.message_content = True
 intents.reactions = True
-bot = Bot(command_prefix="**", intents=intents)
+bot = Bot(command_prefix=COMMAND_PREFIX, intents=intents)
 
 
 @bot.event
@@ -114,6 +114,46 @@ async def create_quiz(ctx: Context, *, request: QuizRequest):
     for emoji in request.emojis:
         await quiz.add_reaction(emoji)
 
+    # Delete command message
+    await ctx.message.delete(delay=5)
+
+
+@bot.command(name="score")
+async def score(ctx: Context):
+    user_id = ctx.author.id
+    channel_id = ctx.channel.id
+    score = get_score(user_id, channel_id)
+
+    embed = discord.Embed(
+        title="Stats for player " + ctx.author.name,
+        color=discord.Color.orange()
+    )
+    embed.add_field(name='Score', value=score, inline=False)
+
+    stats = await ctx.send(embed=embed)
+
+    # Delete command message
+    await ctx.message.delete(delay=5)
+
+
+@bot.command(name="leaderboard")
+async def leaderboard(ctx: Context):
+    channel_id = ctx.channel.id
+    scores = get_scores(channel_id)
+
+    embed = discord.Embed(
+        title="Cannel leaderboard",
+        color=discord.Color.orange()
+    )
+    for score in scores:
+        player: discord.User = await bot.fetch_user(score[0])
+        embed.add_field(name='Score for player ' + player.name, value=score[1], inline=False)
+
+    stats = await ctx.send(embed=embed)
+
+    # Delete command message
+    await ctx.message.delete(delay=5)
+            
 
 @bot.event
 async def on_ready():

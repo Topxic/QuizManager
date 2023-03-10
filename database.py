@@ -11,6 +11,56 @@ GIVEN_ANSWER_TABLE = 'given_answer'
 log = logging.getLogger(__name__)
 
 
+def get_score(player_id, channel_id):
+    try:
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor()
+        query = ("SELECT COUNT(*) "
+                 "FROM {} AS ga "
+                 "JOIN {} AS a ON ga.answer_id = a.answer_id "
+                 "JOIN {} AS q ON ga.quiz_id = q.quiz_id "
+                 "WHERE ga.player_id = {} "
+                 "AND q.channel_id = {} "
+                 "AND a.correct = true").format(
+            GIVEN_ANSWER_TABLE, ANSWER_TABLE, QUIZ_TABLE,
+            player_id, channel_id
+        )
+        cursor.execute(query)
+        return cursor.fetchone()[0]
+    except Exception as e:
+        log.error('Error reading score for player: %s in channel: %s, %s',
+                  player_id, channel_id, e)
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
+def get_scores(channel_id):
+    try:
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor()
+        query = ("SELECT player_id, COUNT(*) AS score "
+                 "FROM {} AS ga "
+                 "JOIN {} AS a ON ga.answer_id = a.answer_id "
+                 "JOIN {} AS q ON ga.quiz_id = q.quiz_id "
+                 "WHERE q.channel_id = {} "
+                 "AND a.correct = true "
+                 "GROUP BY player_id "
+                 "ORDER BY score DESC").format(
+                    GIVEN_ANSWER_TABLE, ANSWER_TABLE, QUIZ_TABLE,
+                    channel_id
+        )
+        cursor.execute(query)
+        return cursor.fetchall()
+    except Exception as e:
+        log.error('Error reading scores for channel: %s, %s', channel_id, e)
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
 def persist_given_answers(given_answers):
     try:
         connection = mysql.connector.connect(**DB_CONFIG)
@@ -96,7 +146,7 @@ def update_ttl():
         query = ("UPDATE {} "
                  "SET finished = 0 "
                  "WHERE time_to_live = 0 AND finished = 1").format(QUIZ_TABLE)
-        
+
         cursor.execute(query)
         connection.commit()
         return (running, terminated)
@@ -128,7 +178,7 @@ def create_game(quiz_request: QuizRequest):
 
         for i in range(len(quiz_request.emojis)):
             query = ("INSERT INTO {} (quiz_id, emoji, answer, correct) "
-                 "VALUES (%s, %s, %s, %s)").format(ANSWER_TABLE)
+                     "VALUES (%s, %s, %s, %s)").format(ANSWER_TABLE)
             cursor.execute(query, (
                 quiz_id,
                 quiz_request.emojis[i],

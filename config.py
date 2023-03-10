@@ -3,6 +3,8 @@ import dotenv
 
 dotenv.load_dotenv('./secrets.env')
 
+COMMAND_PREFIX = '?'
+
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
 
 UPDATE_INTERVAL = 5
@@ -42,8 +44,8 @@ LOGGING_CONFIG = {
     } 
 }
 
-CREATE_USAGE = """
-**create How many fingers am I showing?
+CREATE_USAGE = COMMAND_PREFIX + """
+create How many fingers am I showing?
 30 1 0 0 0
 🇧 
 🇦  You show 1 finger
