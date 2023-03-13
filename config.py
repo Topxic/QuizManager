@@ -1,14 +1,15 @@
 import os
+import discord
 import dotenv
 
 dotenv.load_dotenv('./secrets.env')
 
 COMMAND_PREFIX = '?'
-BOT_DESCRIPTION = "Quiz moderation: This bot creates and moderates quiz questions with a lifetime set by the user. Furhtermore, it provides commands for player statistics. Use " + \
-    COMMAND_PREFIX + "help to get the list of possible commands"
+BOT_DESCRIPTION = 'Quiz moderation: This bot creates and moderates quiz questions with a lifetime set by the user. Furhtermore, it provides commands for player statistics. Use ' + \
+    COMMAND_PREFIX + 'help to get the list of possible commands'
 BOT_TOKEN = os.getenv('DISCORD_TOKEN')
-
-UPDATE_INTERVAL = 5
+EMBED_COLOR = discord.Color.orange()
+UPDATE_INTERVAL = 20
 
 DB_CONFIG = {
     'user': os.getenv('MYSQL_USER'),
@@ -45,10 +46,9 @@ LOGGING_CONFIG = {
     }
 }
 
-CREATE_USAGE = COMMAND_PREFIX + """
-create How many fingers am I showing?
-30 1 0 0 0
-🇧 
-🇦  You show 1 finger
-🇧  You show 2 fingers
-🇨  You show 3 fingers"""
+CREATE_DESCRIPTION = 'Create a quiz question. \n\n Pass information line-wise: \nQuestion, active time, correct answer answer1 answer2 ... \n\nExample: \n' + \
+    COMMAND_PREFIX + 'create How many fingers am I showing? \n30 1 0 0 0 \n🇧 \n🇦  You show 1 finger \n🇧  You show 2 fingers \n🇨  You show 3 fingers'
+
+PLAYER_DESCRIPTION = 'Request stats of player that send the command.'
+
+CHANNEL_DESCRIPTION = 'Request stats of the scoped channel including number of quizzes and scoreboard'
