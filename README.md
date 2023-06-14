@@ -1,7 +1,7 @@
 # QuizManager
 QuizManager is a Python script that allows users to create quizzes with a limited lifetime. Other users can participate by submitting their answers, choosing from emojis attached to each question. Once the timer finishes, the answers are collected and persisted in a connected database. Using the persisted data, statistics about players and channels can be requested.
 
-![image](https://github.com/Topxic/QuizManager/assets/50781880/dbb6fbe7-d4b0-485a-a19e-22d66213dac2)
+![](QuizManager.png)
 
 ## Features
 Create quizzes with a limited lifetime.
